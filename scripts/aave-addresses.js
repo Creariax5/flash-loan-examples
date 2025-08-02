@@ -6,7 +6,7 @@ const AAVE_V3_SEPOLIA = {
     Pool: "0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951",
     PoolAddressesProvider: "0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A",
     PoolConfigurator: "0x7Ee6dD7ed72474CE5a8132C7AB07d6b2B814F2B8",
-    AaveProtocolDataProvider: "0x3e971EdE3F15D8B14879532Be9bfeB53A7F73ba1",
+    AaveProtocolDataProvider: "0x3e9708d80f7B3e43118013075F7e95CE3AB31F31",
     
     // Gateways and Helpers
     WrappedTokenGateway: "0x387d311e47e80b498169e6fb51d3193167d89F7D",
