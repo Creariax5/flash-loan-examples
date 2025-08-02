@@ -35,11 +35,11 @@ async function checkPoolInformation() {
         
         const premiumTotal = await pool.FLASHLOAN_PREMIUM_TOTAL();
         console.log("Flash loan fee rate:", premiumTotal.toString(), "basis points");
-        console.log("Flash loan fee rate:", (premiumTotal / 100).toString() + "%");
+        console.log("Flash loan fee rate:", (Number(premiumTotal) / 100).toString() + "%");
         
         try {
             const premiumToProtocol = await pool.FLASHLOAN_PREMIUM_TO_PROTOCOL();
-            const premiumToLP = premiumTotal - premiumToProtocol;
+            const premiumToLP = Number(premiumTotal) - Number(premiumToProtocol);
             console.log("Fee to Protocol:", premiumToProtocol.toString(), "basis points");
             console.log("Fee to LPs:", premiumToLP.toString(), "basis points");
         } catch (e) {
@@ -71,7 +71,7 @@ async function checkReserveData() {
         ];
         
         const dataProvider = new ethers.Contract(
-            AAVE_V3_SEPOLIA.AaveProtocolDataProvider,
+            ethers.getAddress(AAVE_V3_SEPOLIA.AaveProtocolDataProvider),
             dataProviderABI,
             ethers.provider
         );
@@ -84,9 +84,12 @@ async function checkReserveData() {
             console.log(`📈 ${reserve.symbol} (${reserve.tokenAddress}):`);
             
             try {
+                // Ensure address is properly checksummed
+                const checksummedAddress = ethers.getAddress(reserve.tokenAddress);
+                
                 // Get reserve data
-                const reserveData = await dataProvider.getReserveData(reserve.tokenAddress);
-                const config = await dataProvider.getReserveConfigurationData(reserve.tokenAddress);
+                const reserveData = await dataProvider.getReserveData(checksummedAddress);
+                const config = await dataProvider.getReserveConfigurationData(checksummedAddress);
                 
                 const decimals = Number(config.decimals);
                 const liquidity = ethers.formatUnits(reserveData.availableLiquidity, decimals);
