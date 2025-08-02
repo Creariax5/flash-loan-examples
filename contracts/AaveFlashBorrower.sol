@@ -66,6 +66,7 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable {
     constructor(address _addressesProvider) {
         addressesProvider = IPoolAddressesProvider(_addressesProvider);
         pool = IPool(addressesProvider.getPool());
+        _transferOwnership(msg.sender);
     }
 
     /**
@@ -156,7 +157,7 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable {
         uint256 amount,
         uint256 premium,
         Strategy strategy
-    ) external {
+    ) external view {
         require(msg.sender == address(this), "Only self can call");
         
         if (strategy == Strategy.SIMPLE_TEST) {
@@ -208,7 +209,7 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable {
     }
 
     // Strategy implementations
-    function _executeSimpleTest(address asset, uint256 amount, uint256 premium) private {
+    function _executeSimpleTest(address asset, uint256 amount, uint256 premium) private view {
         // Simple test: verify we received the tokens and can pay back
         uint256 balance = IERC20(asset).balanceOf(address(this));
         require(balance >= amount, "Flash loan amount not received");
@@ -220,7 +221,7 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable {
         require(balance >= amount + premium, "Insufficient balance for repayment");
     }
 
-    function _executeArbitrage(address asset, uint256 amount, uint256 premium) private {
+    function _executeArbitrage(address asset, uint256 amount, uint256 premium) private view {
         // TODO: Implement arbitrage logic
         // Example: Buy low on DEX A, sell high on DEX B
         // Ensure profit > premium for profitability
@@ -232,7 +233,7 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable {
         );
     }
 
-    function _executeLiquidation(address asset, uint256 amount, uint256 premium) private {
+    function _executeLiquidation(address asset, uint256 amount, uint256 premium) private view {
         // TODO: Implement liquidation logic
         // Example: Liquidate undercollateralized positions on lending protocols
         
@@ -242,7 +243,7 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable {
         );
     }
 
-    function _executeRefinancing(address asset, uint256 amount, uint256 premium) private {
+    function _executeRefinancing(address asset, uint256 amount, uint256 premium) private view {
         // TODO: Implement refinancing logic
         // Example: Pay off high-interest loan, take new loan at better rate
         

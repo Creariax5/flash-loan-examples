@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 const { AAVE_V3_SEPOLIA, ASSET_DECIMALS, ASSET_SYMBOLS } = require("./aave-addresses");
 
 // Replace with your deployed contract address after deployment
-const BORROWER_ADDRESS = "0x..."; // UPDATE THIS WITH YOUR DEPLOYED CONTRACT
+const BORROWER_ADDRESS = "0x9C54C25bab9957B078ACbf8F38c50735bCFEeffE"; // UPDATE THIS WITH YOUR DEPLOYED CONTRACT
 
 async function main() {
     console.log("🧪 Testing Aave Flash Loans on Sepolia...");
@@ -10,7 +10,7 @@ async function main() {
     
     const [signer] = await ethers.getSigners();
     console.log("Testing with account:", signer.address);
-    console.log("Account balance:", ethers.utils.formatEther(await signer.getBalance()), "ETH\n");
+    console.log("Account balance:", ethers.formatEther(await signer.provider.getBalance(signer.address)), "ETH\n");
     
     if (BORROWER_ADDRESS === "0x...") {
         console.log("❌ Please update BORROWER_ADDRESS with your deployed contract address!");
@@ -24,14 +24,38 @@ async function main() {
     const USDC = await ethers.getContractAt("IERC20", AAVE_V3_SEPOLIA.Assets.USDC);
     const DAI = await ethers.getContractAt("IERC20", AAVE_V3_SEPOLIA.Assets.DAI);
 
-    // Verify ownership
-    const owner = await borrower.owner();
+    // Verify ownership with retry logic
     console.log("📋 Contract Information:");
     console.log("========================");
-    console.log("Contract address:", borrower.address);
-    console.log("Contract owner:", owner);
-    console.log("Your address:", signer.address);
-    console.log("Connected pool:", await borrower.getPool());
+    const contractAddress = await borrower.getAddress();
+    console.log("Contract address:", contractAddress);
+    
+    let owner;
+    let connectedPool;
+    let retries = 3;
+    
+    while (retries > 0) {
+        try {
+            owner = await borrower.owner();
+            connectedPool = await borrower.getPool();
+            console.log("Contract owner:", owner);
+            console.log("Your address:", signer.address);
+            console.log("Connected pool:", connectedPool);
+            break;
+        } catch (error) {
+            retries--;
+            console.log(`⚠️  Contract call failed (${4 - retries}/3): ${error.message}`);
+            if (retries > 0) {
+                console.log("⏳ Waiting 3 seconds before retry...");
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            } else {
+                console.log("❌ Failed to verify contract state after all retries");
+                console.log("   This might be a network connectivity issue");
+                console.log("   Try running the script again in a few minutes");
+                return;
+            }
+        }
+    }
     
     if (owner.toLowerCase() !== signer.address.toLowerCase()) {
         console.log("❌ You are not the owner of this contract!");
@@ -50,7 +74,7 @@ async function main() {
     
     for (const asset of assets) {
         const liquidity = await asset.contract.balanceOf(AAVE_V3_SEPOLIA.Pool);
-        const formatted = ethers.utils.formatUnits(liquidity, asset.decimals);
+        const formatted = ethers.formatUnits(liquidity, asset.decimals);
         console.log(`${asset.name} available: ${formatted}`);
     }
 
@@ -58,8 +82,8 @@ async function main() {
     console.log("\n💰 Borrower Token Balances:");
     console.log("===========================");
     for (const asset of assets) {
-        const balance = await asset.contract.balanceOf(borrower.address);
-        const formatted = ethers.utils.formatUnits(balance, asset.decimals);
+        const balance = await asset.contract.balanceOf(contractAddress);
+        const formatted = ethers.formatUnits(balance, asset.decimals);
         console.log(`${asset.name}: ${formatted}`);
     }
 
@@ -68,7 +92,7 @@ async function main() {
     console.log("==============================");
     const feeRate = await borrower.getFlashLoanPremiumTotal();
     console.log("Current fee rate:", feeRate.toString(), "basis points");
-    console.log("Current fee rate:", (feeRate / 100).toString() + "%");
+    console.log("Current fee rate:", (Number(feeRate) / 100).toString() + "%");
 
     // Test flash loan with WETH
     await testFlashLoan("WETH", WETH, "1", 18);
@@ -87,36 +111,37 @@ async function testFlashLoan(symbol, tokenContract, amount, decimals) {
     console.log("================================");
     
     const borrower = await ethers.getContractAt("AaveFlashBorrower", BORROWER_ADDRESS);
-    const loanAmount = ethers.utils.parseUnits(amount, decimals);
+    const borrowerAddress = await borrower.getAddress();
+    const loanAmount = ethers.parseUnits(amount, decimals);
     
     console.log(`Loan amount: ${amount} ${symbol}`);
     
     // Calculate expected fee
     const expectedFee = await borrower.calculateFlashLoanFee(loanAmount);
-    const feeFormatted = ethers.utils.formatUnits(expectedFee, decimals);
+    const feeFormatted = ethers.formatUnits(expectedFee, decimals);
     console.log(`Expected fee: ${feeFormatted} ${symbol}`);
     
     // Check if borrower can afford the fee
-    const canAfford = await borrower.canAffordFlashLoan(tokenContract.address, loanAmount);
+    const canAfford = await borrower.canAffordFlashLoan(await tokenContract.getAddress(), loanAmount);
     console.log(`Can afford fee: ${canAfford}`);
     
     if (!canAfford) {
         console.log(`❌ Insufficient ${symbol} balance for fees!`);
         console.log("💡 Get tokens from: https://staging.aave.com/faucet/");
-        console.log(`   Send some ${symbol} to: ${borrower.address}`);
+        console.log(`   Send some ${symbol} to: ${borrowerAddress}`);
         return;
     }
     
     // Check initial balances
-    const initialBalance = await tokenContract.balanceOf(borrower.address);
-    console.log(`Initial balance: ${ethers.utils.formatUnits(initialBalance, decimals)} ${symbol}`);
+    const initialBalance = await tokenContract.balanceOf(borrowerAddress);
+    console.log(`Initial balance: ${ethers.formatUnits(initialBalance, decimals)} ${symbol}`);
     
     try {
         console.log("⏳ Executing flash loan...");
         
         // Execute flash loan with SIMPLE_TEST strategy (enum value 0)
         const tx = await borrower.requestFlashLoanSimple(
-            tokenContract.address,
+            await tokenContract.getAddress(),
             loanAmount,
             0 // Strategy.SIMPLE_TEST
         );
@@ -128,14 +153,14 @@ async function testFlashLoan(symbol, tokenContract, amount, decimals) {
         console.log("📊 Transaction details:");
         console.log("   Block number:", receipt.blockNumber);
         console.log("   Gas used:", receipt.gasUsed.toString());
-        console.log("   Gas price:", ethers.utils.formatUnits(receipt.effectiveGasPrice, "gwei"), "gwei");
+        console.log("   Gas price:", ethers.formatUnits(receipt.effectiveGasPrice, "gwei"), "gwei");
         
         // Check for FlashLoanExecuted event
         const events = receipt.events?.filter(event => event.event === "FlashLoanExecuted");
         if (events && events.length > 0) {
             const event = events[0];
-            const eventAmount = ethers.utils.formatUnits(event.args.amount, decimals);
-            const eventPremium = ethers.utils.formatUnits(event.args.premium, decimals);
+            const eventAmount = ethers.formatUnits(event.args.amount, decimals);
+            const eventPremium = ethers.formatUnits(event.args.premium, decimals);
             
             console.log("📝 Flash loan event details:");
             console.log(`   Amount: ${eventAmount} ${symbol}`);
@@ -145,13 +170,13 @@ async function testFlashLoan(symbol, tokenContract, amount, decimals) {
         }
         
         // Check final balance
-        const finalBalance = await tokenContract.balanceOf(borrower.address);
-        const finalFormatted = ethers.utils.formatUnits(finalBalance, decimals);
+        const finalBalance = await tokenContract.balanceOf(borrowerAddress);
+        const finalFormatted = ethers.formatUnits(finalBalance, decimals);
         console.log(`Final balance: ${finalFormatted} ${symbol}`);
         
-        // Calculate fees paid
-        const feesPaid = initialBalance.sub(finalBalance);
-        const feesFormatted = ethers.utils.formatUnits(feesPaid, decimals);
+        // Calculate fees paid (using BigInt arithmetic in ethers v6)
+        const feesPaid = initialBalance - finalBalance;
+        const feesFormatted = ethers.formatUnits(feesPaid, decimals);
         console.log(`Fees paid: ${feesFormatted} ${symbol}`);
         
         // Verify fee calculation
@@ -179,7 +204,7 @@ async function testFlashLoan(symbol, tokenContract, amount, decimals) {
         // Try to decode revert reason
         if (error.data) {
             try {
-                const reason = ethers.utils.toUtf8String("0x" + error.data.substr(138));
+                const reason = ethers.toUtf8String("0x" + error.data.substr(138));
                 console.log("Revert reason:", reason);
             } catch (e) {
                 // Could not decode revert reason
@@ -238,20 +263,21 @@ async function debugContractState() {
     const borrower = await ethers.getContractAt("AaveFlashBorrower", BORROWER_ADDRESS);
     
     try {
-        console.log("Contract address:", borrower.address);
+        console.log("Contract address:", await borrower.getAddress());
         console.log("Owner:", await borrower.owner());
         console.log("Connected pool:", await borrower.getPool());
         console.log("Expected pool:", AAVE_V3_SEPOLIA.Pool);
         
         // Check if contract has any ETH (shouldn't have any)
         const ethBalance = await ethers.provider.getBalance(borrower.address);
-        console.log("Contract ETH balance:", ethers.utils.formatEther(ethBalance));
+        console.log("Contract ETH balance:", ethers.formatEther(ethBalance));
         
         // Check allowances (should be 0 when not in flash loan)
+        const contractAddress = await borrower.getAddress();
         const assets = [AAVE_V3_SEPOLIA.Assets.WETH, AAVE_V3_SEPOLIA.Assets.USDC];
         for (const asset of assets) {
             const token = await ethers.getContractAt("IERC20", asset);
-            const allowance = await token.allowance(borrower.address, AAVE_V3_SEPOLIA.Pool);
+            const allowance = await token.allowance(contractAddress, AAVE_V3_SEPOLIA.Pool);
             const symbol = ASSET_SYMBOLS[asset];
             console.log(`${symbol} allowance to pool:`, allowance.toString());
         }
