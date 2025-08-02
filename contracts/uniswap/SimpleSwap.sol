@@ -1,7 +1,7 @@
 // https://uniswap.org/blog/your-first-uniswap-integration
 
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity =0.8.9;
+pragma solidity ^0.8.9;
 pragma abicoder v2;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";

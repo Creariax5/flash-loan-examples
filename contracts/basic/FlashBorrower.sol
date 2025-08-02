@@ -14,9 +14,16 @@ contract FlashBorrower is IERC3156FlashBorrower {
     }
 
     IERC3156FlashLender lender;
+    address owner;
 
     constructor(IERC3156FlashLender lender_) {
         lender = lender_;
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this");
+        _;
     }
 
     /// @dev ERC-3156 Flash loan callback
@@ -48,7 +55,7 @@ contract FlashBorrower is IERC3156FlashBorrower {
     }
 
     /// @dev Initiate a flash loan
-    function flashBorrow(address token, uint256 amount) public {
+    function flashBorrow(address token, uint256 amount) public onlyOwner {
         bytes memory data = abi.encode(Action.NORMAL);
         uint256 _allowance = IERC20(token).allowance(address(this), address(lender));
         uint256 _fee = lender.flashFee(token, amount);
