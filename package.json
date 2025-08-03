@@ -1,69 +1,30 @@
 {
-  "name": "aave-flash-loan-sepolia",
+  "name": "simple-aave-flash-loan",
   "version": "1.0.0",
-  "description": "Aave V3 Flash Loan implementation for Ethereum Sepolia testnet",
+  "description": "Simple Aave V3 Flash Loan for $100 on Sepolia testnet",
   "main": "index.js",
   "scripts": {
     "compile": "npx hardhat compile",
-    "test": "npx hardhat test",
-    "test:sepolia": "npx hardhat test --network sepolia",
-    "deploy:sepolia": "npx hardhat run scripts/deploy-aave.js --network sepolia",
-    "test-flash-loan:sepolia": "npx hardhat run scripts/test-aave-flash-loan.js --network sepolia",
-    "check-protocol": "npx hardhat run scripts/check-protocol-info.js --network sepolia",
-    "check-fees": "npx hardhat run scripts/check-aave-fees.js --network sepolia",
-    "verify": "npx hardhat verify --network sepolia",
-    "clean": "npx hardhat clean",
-    "size": "npx hardhat size-contracts",
-    "coverage": "npx hardhat coverage",
-    "gas-report": "REPORT_GAS=true npx hardhat test"
+    "deploy": "npx hardhat run scripts/deploy-simple.js --network sepolia",
+    "test-flash-loan": "npx hardhat run scripts/simple-flash-loan.js --network sepolia",
+    "clean": "npx hardhat clean"
   },
   "keywords": [
     "aave",
     "flash-loan",
     "defi",
     "ethereum",
-    "solidity",
-    "sepolia",
-    "arbitrage",
-    "liquidation"
+    "sepolia"
   ],
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
-    "@nomicfoundation/hardhat-ethers": "^3.0.4",
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@nomicfoundation/hardhat-verify": "^1.1.1",
-    "@typechain/ethers-v6": "^0.4.3",
-    "@typechain/hardhat": "^8.0.3",
-    "@types/chai": "^4.3.5",
-    "@types/mocha": "^10.0.1",
-    "chai": "^4.3.7",
-    "ethers": "^6.7.1",
-    "hardhat": "^2.17.1",
-    "hardhat-contract-sizer": "^2.10.0",
-    "hardhat-gas-reporter": "^1.0.9",
-    "solidity-coverage": "^0.8.4",
-    "typechain": "^8.3.1"
+    "hardhat": "^2.17.1"
   },
   "dependencies": {
-    "@aave/core-v3": "^1.19.1",
-    "@aave/periphery-v3": "^2.0.3",
     "@openzeppelin/contracts": "^4.9.3",
-    "@uniswap/v3-periphery": "^1.4.4",
     "dotenv": "^16.3.1"
-  },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/aave-flash-loan-sepolia.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/aave-flash-loan-sepolia/issues"
-  },
-  "homepage": "https://github.com/yourusername/aave-flash-loan-sepolia#readme"
+  }
 }
