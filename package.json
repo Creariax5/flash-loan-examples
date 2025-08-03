@@ -6,7 +6,9 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy-simple.js --network sepolia",
+    "deploy:base": "npx hardhat run scripts/deploy-base.js --network base",
     "test-flash-loan": "npx hardhat run scripts/simple-flash-loan.js --network sepolia",
+    "test-flash-loan:base": "npx hardhat run scripts/flash-loan-base.js --network base",
     "clean": "npx hardhat clean"
   },
   "keywords": [

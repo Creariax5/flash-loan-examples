@@ -1,13 +1,14 @@
-# Simple Aave Flash Loan - $100 Example
+# Simple Aave Flash Loan - Sepolia & Base
 
-A minimal implementation of an Aave V3 flash loan to borrow $100 worth of USDC on Ethereum Sepolia testnet.
+A minimal implementation of Aave V3 flash loans on both Ethereum Sepolia testnet and Base mainnet.
 
 ## What This Does
 
-This project demonstrates the simplest possible flash loan:
-1. Borrow 100 USDC from Aave V3
-2. Verify we received the tokens
-3. Pay back the loan + fee (currently 0.09%)
+This project demonstrates simple flash loans:
+- **Sepolia**: Borrow 1 USDC (testing with limited liquidity)
+- **Base**: Borrow 1000 USDC (mainnet with full liquidity)
+- Verify tokens received
+- Pay back loan + fee (0.05% = 5 basis points)
 
 ## Quick Start
 
@@ -18,7 +19,9 @@ Create a `.env` file:
 PRIVATE_KEY=your_private_key_here
 ALCHEMY_API_KEY=your_alchemy_api_key_here
 ETHERSCAN_API_KEY=your_etherscan_api_key_here
+BASESCAN_API_KEY=your_basescan_api_key_here
 SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+BASE_RPC_URL=https://mainnet.base.org
 ```
 
 ### 2. Install Dependencies
@@ -27,61 +30,51 @@ SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
 npm install
 ```
 
-### 3. Deploy Contract
+### 3. Deploy Contracts
 
+**Sepolia (Testing):**
 ```bash
 npm run compile
 npm run deploy
 ```
 
-### 4. Get Test Tokens
-
-1. Go to [Aave Faucet](https://staging.aave.com/faucet/)
-2. Connect your wallet on Sepolia
-3. Request USDC tokens
-4. Send ~1 USDC to your deployed contract for fees
-
-### 5. Test Flash Loan
-
-Update the `CONTRACT_ADDRESS` in `scripts/simple-flash-loan.js` with your deployed contract address, then run:
-
+**Base (Mainnet):**
 ```bash
-npm run test-flash-loan
+npm run deploy:base
 ```
+
+### 4. Get Tokens & Test
+
+**For Sepolia:**
+1. Get USDC from [Aave Faucet](https://staging.aave.com/faucet/)
+2. Send ~0.1 USDC to contract for fees
+3. Run: `npm run test-flash-loan`
+
+**For Base:**
+1. Send ~1 USDC to contract for fees  
+2. Update contract address in `flash-loan-base.js`
+3. Run: `npm run test-flash-loan:base`
 
 ## Project Structure
 
 ```
 contracts/
-  AaveFlashBorrower.sol  - Simple flash loan contract
+  AaveFlashBorrower.sol     - Simple flash loan contract
 scripts/
-  deploy-simple.js       - Deploy the contract
-  simple-flash-loan.js   - Test the flash loan
-.env                     - Environment variables
-hardhat.config.ts        - Hardhat configuration
+  addresses.js              - Network addresses
+  deploy-simple.js          - Deploy to Sepolia
+  deploy-base.js            - Deploy to Base
+  simple-flash-loan.js      - Test on Sepolia
+  flash-loan-base.js        - Test on Base
 ```
 
-## Key Files
+## Networks
 
-- **AaveFlashBorrower.sol**: Minimal flash loan contract with just the essential functionality
-- **simple-flash-loan.js**: Test script that borrows exactly $100 worth of USDC
-
-## How It Works
-
-1. Contract requests 100 USDC from Aave Pool
-2. Aave sends tokens to contract
-3. Contract executes simple logic (just verification)
-4. Contract approves repayment (100 USDC + 0.09 USDC fee)
-5. Aave pulls back the repayment
+- **Sepolia**: Testing with limited liquidity (1 USDC loans)
+- **Base**: Mainnet with full liquidity (1000+ USDC loans)
 
 ## Cost
 
-- Flash loan fee: 0.09% (9 basis points)
-- For $100 loan: ~$0.09 fee
-- Gas costs: ~$2-5 on Sepolia (varies)
-
-## Notes
-
-- This is for educational purposes on testnet only
-- Real flash loans should implement profitable strategies
-- Never keep funds permanently in the flash loan contract
+- Flash loan fee: 0.05% (5 basis points)
+- Sepolia: ~$0.0005 fee + ~$2-5 gas
+- Base: ~$0.50 fee + ~$0.10-0.50 gas
