@@ -3,8 +3,8 @@ const { ethers } = require("hardhat");
 // Get contract address from environment or set it manually
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "REPLACE_WITH_DEPLOYED_CONTRACT_ADDRESS";
 
-// Base network test parameters
-const UNISWAP_POOL = "0xd0b53d9277642d899df5c87a3966a349a798f224"; // USDC/WETH pool on Base
+// Base network test parameters  
+const UNISWAP_POOL = "0x2F8818D1B0f3e3E295440c1C0cDDf40aAA21fA87"; // SushiSwap USDC/WETH V2 pool on Base
 const USDC_ADDRESS = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";   // USDC on Base
 const WETH_ADDRESS = "0x4200000000000000000000000000000000000006";   // WETH on Base
 
@@ -33,13 +33,13 @@ async function main() {
 
     // Flash loan parameters for Base
     const FLASH_AMOUNT = ethers.parseUnits("1", 6); // 1 USDC
-    const SWAP_AMOUNT = ethers.parseUnits("0.5", 6);   // Swap 0.5 USDC
+    const SWAP_AMOUNT = ethers.parseUnits("0.01", 6);   // Swap only 0.01 USDC (very small to minimize slippage)
 
     console.log("\n📋 Flash Loan Parameters (Base Network):");
     console.log("Asset:", USDC_ADDRESS, "(USDC on Base)");
     console.log("Flash Amount:", ethers.formatUnits(FLASH_AMOUNT, 6), "USDC");
     console.log("Swap Amount:", ethers.formatUnits(SWAP_AMOUNT, 6), "USDC");
-    console.log("Pool:", UNISWAP_POOL, "(USDC/WETH on Base)");
+    console.log("Pool:", UNISWAP_POOL, "(SushiSwap USDC/WETH V2 on Base)");
     console.log("Token Out:", WETH_ADDRESS, "(WETH on Base)");
 
     // Calculate flash loan fee
