@@ -4,21 +4,52 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./interfaces/IAave.sol";
-import "./interfaces/IUniswap.sol";
+
+// Aave V3 interfaces
+interface IPoolAddressesProvider {
+    function getPool() external view returns (address);
+}
+
+interface IPool {
+    function flashLoanSimple(
+        address receiverAddress,
+        address asset,
+        uint256 amount,
+        bytes calldata params,
+        uint16 referralCode
+    ) external;
+    
+    function FLASHLOAN_PREMIUM_TOTAL() external view returns (uint128);
+}
+
+interface IFlashLoanSimpleReceiver {
+    function executeOperation(
+        address asset,
+        uint256 amount,
+        uint256 premium,
+        address initiator,
+        bytes calldata params
+    ) external returns (bool);
+}
+
+// Uniswap V2 interfaces
+interface IUniswapV2Pair {
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external;
+}
 
 /**
- * @title AaveFlashBorrower
- * @dev Flash loan contract with integrated Uniswap V2 swap functionality
- * @author Your Team
+ * @title AaveFlashLoanWithSwap
+ * @dev All-in-one contract: Aave flash loans + Uniswap V2 swaps
  */
-contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard {
+contract AaveFlashLoanWithSwap is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard {
     
     // ============ State Variables ============
     
     IPoolAddressesProvider public immutable addressesProvider;
     IPool public immutable pool;
-    ISimpleV2Swap public immutable swapContract;
 
     // ============ Events ============
     
@@ -48,27 +79,18 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
 
     // ============ Constructor ============
     
-    constructor(address _addressesProvider, address _swapContract) {
+    constructor(address _addressesProvider) {
         require(_addressesProvider != address(0), "Invalid addresses provider");
-        require(_swapContract != address(0), "Invalid swap contract");
         
         addressesProvider = IPoolAddressesProvider(_addressesProvider);
         pool = IPool(addressesProvider.getPool());
-        swapContract = ISimpleV2Swap(_swapContract);
         _transferOwnership(msg.sender);
     }
 
     // ============ Flash Loan Implementation ============
 
-    // ============ Flash Loan Implementation ============
-
     /**
      * @notice Called by Aave Pool after flash loan is sent to this contract
-     * @param asset The address of the flash-borrowed asset
-     * @param amount The amount of the flash-borrowed asset
-     * @param premium The fee of the flash-borrowed asset
-     * @param initiator The address of the flashloan initiator
-     * @param params The byte-encoded params passed when initiating the flashloan
      */
     function executeOperation(
         address asset,
@@ -93,15 +115,8 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
 
     // ============ External Functions ============
 
-    // ============ External Functions ============
-
     /**
      * @notice Request a flash loan from Aave with swap parameters
-     * @param asset Asset to flash loan
-     * @param amount Amount to borrow
-     * @param uniswapPool Uniswap V2 pair address
-     * @param tokenOut Token to swap to
-     * @param swapAmount Amount to swap
      */
     function requestFlashLoanWithSwap(
         address asset,
@@ -131,8 +146,6 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
 
     /**
      * @notice Request a simple flash loan from Aave (no swap)
-     * @param asset Asset to flash loan
-     * @param amount Amount to borrow
      */
     function requestFlashLoan(
         address asset,
@@ -153,8 +166,6 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
 
     /**
      * @notice Calculate flash loan fee for an amount
-     * @param amount The amount to calculate fee for
-     * @return The fee amount
      */
     function calculateFlashLoanFee(uint256 amount) external view returns (uint256) {
         uint256 premiumTotal = pool.FLASHLOAN_PREMIUM_TOTAL();
@@ -163,8 +174,6 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
 
     /**
      * @notice Get contract's balance of a specific token
-     * @param asset The token address
-     * @return The balance
      */
     function getTokenBalance(address asset) external view returns (uint256) {
         return IERC20(asset).balanceOf(address(this));
@@ -174,7 +183,6 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
 
     /**
      * @notice Emergency withdraw function
-     * @param asset The asset to withdraw
      */
     function emergencyWithdraw(address asset) external onlyOwner {
         uint256 balance = IERC20(asset).balanceOf(address(this));
@@ -183,8 +191,6 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
         IERC20(asset).transfer(owner(), balance);
         emit EmergencyWithdraw(asset, balance);
     }
-
-    // ============ Internal Functions ============
 
     // ============ Internal Functions ============
 
@@ -261,11 +267,14 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
         require(swapParams.swapAmount > 0, "Invalid swap amount");
         require(swapParams.swapAmount <= amount, "Swap amount exceeds flash loan amount");
 
-        // Transfer tokens to swap contract
-        IERC20(asset).transfer(address(swapContract), swapParams.swapAmount);
+        // Execute the swap (asset → tokenOut)
+        _executeUniswapSwap(swapParams.uniswapPool, asset, swapParams.swapAmount);
 
-        // Execute the swap
-        swapContract.swap(swapParams.uniswapPool, asset, swapParams.swapAmount);
+        // For testing: swap back immediately (tokenOut → asset)
+        uint256 tokenOutBalance = IERC20(swapParams.tokenOut).balanceOf(address(this));
+        if (tokenOutBalance > 0) {
+            _executeUniswapSwap(swapParams.uniswapPool, swapParams.tokenOut, tokenOutBalance);
+        }
 
         emit SwapExecuted(asset, swapParams.tokenOut, swapParams.swapAmount, swapParams.uniswapPool);
 
@@ -275,6 +284,53 @@ contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable, ReentrancyGuard
         
         require(currentBalance >= totalRequired, "Insufficient balance after swap");
         return true;
+    }
+
+    /**
+     * @dev Execute Uniswap V2 swap
+     */
+    function _executeUniswapSwap(address pairAddress, address tokenIn, uint256 amountIn) internal {
+        IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
+        
+        // Transfer tokens to pair
+        IERC20(tokenIn).transfer(pairAddress, amountIn);
+        
+        // Get reserves and calculate output
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+        address token0 = pair.token0();
+        bool isToken0 = token0 == tokenIn;
+        
+        uint256 amountOut = _getAmountOut(
+            amountIn, 
+            isToken0 ? reserve0 : reserve1, 
+            isToken0 ? reserve1 : reserve0
+        );
+        
+        require(amountOut > 0, "Insufficient output amount");
+        
+        // Execute swap
+        if (isToken0) {
+            pair.swap(0, amountOut, address(this), "");
+        } else {
+            pair.swap(amountOut, 0, address(this), "");
+        }
+    }
+
+    /**
+     * @dev Calculate Uniswap V2 output amount
+     */
+    function _getAmountOut(
+        uint256 amountIn, 
+        uint256 reserveIn, 
+        uint256 reserveOut
+    ) internal pure returns (uint256 amountOut) {
+        require(amountIn > 0, "INSUFFICIENT_INPUT_AMOUNT");
+        require(reserveIn > 0 && reserveOut > 0, "INSUFFICIENT_LIQUIDITY");
+        
+        uint256 amountInWithFee = amountIn * 997;
+        uint256 numerator = amountInWithFee * reserveOut;
+        uint256 denominator = (reserveIn * 1000) + amountInWithFee;
+        amountOut = numerator / denominator;
     }
 
     /**
