@@ -1,4 +1,6 @@
 const { ethers } = require('ethers');
+const { BASE_ADDRESSES } = require('./addresses');
+require('dotenv').config();
 
 /**
  * Peapods Arbitrage Bot JavaScript Interface
@@ -167,33 +169,37 @@ class PeapodsArbitrageBot {
     }
 
     /**
-     * Get TOAST price in USDC terms
+     * Get TOAST price in USDC terms via TOAST/WETH and WETH/USDC prices
      */
     async getToastPriceInUsdc() {
-        // Get price from TOAST/USDC Uniswap pair
-        const pair = new ethers.Contract(
-            this.addresses.toastUsdcPair,
+        // Get TOAST price from TOAST/WETH pair
+        const toastWethPair = new ethers.Contract(
+            this.addresses.toastWethPair,
             UNISWAP_PAIR_ABI,
             this.provider
         );
         
-        const reserves = await pair.getReserves();
-        const token0 = await pair.token0();
+        const reserves = await toastWethPair.getReserves();
+        const token0 = await toastWethPair.token0();
         
-        let toastReserve, usdcReserve;
+        let toastReserve, wethReserve;
         if (token0.toLowerCase() === this.addresses.toast.toLowerCase()) {
             toastReserve = reserves[0];
-            usdcReserve = reserves[1];
+            wethReserve = reserves[1];
         } else {
             toastReserve = reserves[1];
-            usdcReserve = reserves[0];
+            wethReserve = reserves[0];
         }
         
-        // Price = USDC reserves / TOAST reserves
-        const price = parseFloat(ethers.formatUnits(usdcReserve, 6)) / 
-                     parseFloat(ethers.formatEther(toastReserve));
+        // TOAST price in WETH
+        const toastPriceInWeth = parseFloat(ethers.formatEther(wethReserve)) / 
+                                parseFloat(ethers.formatEther(toastReserve));
         
-        return price;
+        // Get WETH price in USDC (you'll need a WETH/USDC pair or use oracle)
+        // For now, using approximate WETH price of $2500
+        const wethPriceInUsdc = 2500; // This should be dynamic in production
+        
+        return toastPriceInWeth * wethPriceInUsdc;
     }
 
     /**
@@ -262,43 +268,47 @@ class PeapodsArbitrageBot {
     buildArbitrageParams(minProfitAmount) {
         return {
             usdcToken: this.addresses.usdc,
-            wethToken: this.addresses.toast, // Using TOAST as the underlying asset
+            wethToken: this.addresses.weth, // Using WETH (will get from TOAST via pair)
             usdcVault: this.addresses.pfUsdcVault,
             podETH: this.addresses.podTOAST, // Using podTOAST
             pfUsdcPodEthPair: this.addresses.pfUsdcPodToastPair,
-            wethUsdcPair: this.addresses.toastUsdcPair,
+            wethUsdcPair: this.addresses.toastWethPair, // Using TOAST/WETH pair
             minProfitAmount: minProfitAmount,
             maxSlippage: 200 // 2%
         };
     }
 }
 
-// Contract addresses configuration - pToastLVF Pod
+// Contract addresses configuration using addresses.js
 const CONTRACT_ADDRESSES = {
-    // Core tokens
-    usdc: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // USDC token
-    toast: '0x21f8c472D1702919aF0AF57a9E2926f2c1FB67C5', // TOAST token (underlying asset)
+    // Core tokens from addresses.js
+    usdc: BASE_ADDRESSES.USDC,
+    weth: BASE_ADDRESSES.WETH,
+    toast: BASE_ADDRESSES.TOAST,
     
     // Peapods contracts
-    podTOAST: '0x3bd21199b84Dd0b4d573a58E28E919d8A084c0Cf', // pToastLVF (DecentralizedIndex)
-    pfUsdcVault: '0x...', // pfUSDC-31 LendingAssetVault (need to find this address)
+    podTOAST: BASE_ADDRESSES.podTOAST,
+    pfUsdcVault: BASE_ADDRESSES.pfUsdcVault,
     
     // Uniswap V2 pairs
-    pfUsdcPodToastPair: '0x6557B01F11d404d4DB9Af94469bF527D394d3072', // pfUSDC-31/pToastLVF pair
-    toastUsdcPair: '0x...', // TOAST/USDC pair (need to find this)
+    pfUsdcPodToastPair: BASE_ADDRESSES.pfUsdcPodToastPair,
+    toastWethPair: BASE_ADDRESSES.TOAST_WETH_PAIR,
     
     // Your deployed arbitrage bot
     arbitrageBot: '0x1a83859496f515c7d147a2f62a20bfa53C48700A', // Deployed on Base mainnet
     
     // Aave
-    aaveAddressesProvider: '0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb' // Aave AddressesProvider (Base)
+    aaveAddressesProvider: BASE_ADDRESSES.PoolAddressesProvider
 };
 
-// Usage example
+// Usage example using .env
 async function main() {
-    // Setup provider and signer (Ethers v6 syntax)
-    const provider = new ethers.JsonRpcProvider('YOUR_RPC_URL');
-    const signer = new ethers.Wallet('YOUR_PRIVATE_KEY', provider);
+    // Setup provider and signer using .env variables
+    const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL || "https://mainnet.base.org");
+    const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    
+    console.log(`🔗 Connected to Base network`);
+    console.log(`📍 Wallet: ${signer.address}`);
     
     // Initialize arbitrage bot
     const bot = new PeapodsArbitrageBot(provider, signer, CONTRACT_ADDRESSES);
