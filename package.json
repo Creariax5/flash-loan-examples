@@ -9,6 +9,17 @@
     "deploy:base": "npx hardhat run scripts/deploy-base.js --network base",
     "test-flash-loan": "npx hardhat run scripts/simple-flash-loan.js --network sepolia",
     "test-flash-loan:base": "npx hardhat run scripts/flash-loan-base.js --network base",
+    "podeth": "node scripts/podeth-final.js",
+    "podeth-force": "node scripts/podeth-final.js --force",
+    "unwrap-podeth": "node scripts/unwrap-podeth.js",
+    "unwrap-half": "node scripts/unwrap-podeth.js 50",
+    "analyze-debt": "node scripts/analyze-debt.js",
+    "repay-debt": "node scripts/analyze-debt.js repay",
+    "borrow-podeth": "node scripts/borrow-podeth.js",
+    "borrow-weth": "node scripts/borrow-podeth.js borrow 0.0002",
+    "claim-rewards": "node scripts/borrow-podeth.js claim",
+    "burn-analysis": "node scripts/burn-analysis.js",
+    "try-withdraw": "node scripts/burn-analysis.js withdraw",
     "clean": "npx hardhat clean"
   },
   "keywords": [
@@ -27,6 +38,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.3",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "ethers": "^6.7.1"
   }
 }
