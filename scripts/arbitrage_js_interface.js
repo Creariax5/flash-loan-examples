@@ -28,14 +28,14 @@ class PeapodsArbitrageBot {
             provider
         );
         
-        this.wethToken = new ethers.Contract(
-            contractAddresses.weth,
+        this.toastToken = new ethers.Contract(
+            contractAddresses.toast,
             ERC20_ABI,
             provider
         );
         
-        this.podETH = new ethers.Contract(
-            contractAddresses.podETH,
+        this.podTOAST = new ethers.Contract(
+            contractAddresses.podTOAST,
             DECENTRALIZED_INDEX_ABI,
             provider
         );
@@ -54,7 +54,7 @@ class PeapodsArbitrageBot {
         console.log('🔍 Monitoring arbitrage opportunities...');
         console.log(`📍 Wallet: ${await this.signer.getAddress()}`);
         console.log(`🏦 Arbitrage Bot: ${this.addresses.arbitrageBot}`);
-        console.log(`🪙 podETH: ${this.addresses.podETH}\n`);
+        console.log(`🪙 podTOAST: ${this.addresses.podTOAST}\n`);
         
         setInterval(async () => {
             try {
@@ -79,15 +79,15 @@ class PeapodsArbitrageBot {
      */
     async checkArbitrageOpportunity() {
         // 1. Get current prices
-        const wethPrice = await this.getWethPriceInUsdc();
-        const podEthPrice = await this.getPodEthPriceInUsdc();
+        const toastPrice = await this.getToastPriceInUsdc();
+        const podToastPrice = await this.getPodToastPriceInUsdc();
         
         // 2. Calculate price difference
-        const priceDifference = wethPrice - podEthPrice;
-        const priceGapPercent = (priceDifference / wethPrice) * 100;
+        const priceDifference = toastPrice - podToastPrice;
+        const priceGapPercent = (priceDifference / toastPrice) * 100;
         
-        console.log(`WETH Price: $${wethPrice.toFixed(4)}`);
-        console.log(`podETH Price: $${podEthPrice.toFixed(4)}`);
+        console.log(`TOAST Price: $${toastPrice.toFixed(4)}`);
+        console.log(`podTOAST Price: $${podToastPrice.toFixed(4)}`);
         console.log(`Price Gap: ${priceGapPercent.toFixed(2)}%`);
         
         // 3. Estimate optimal flash loan amount
@@ -101,8 +101,8 @@ class PeapodsArbitrageBot {
         );
         
         return {
-            wethPrice,
-            podEthPrice,
+            toastPrice,
+            podToastPrice,
             priceGapPercent,
             optimalFlashLoanAmount,
             estimatedProfit: profitEstimation.estimatedProfit,
@@ -167,12 +167,12 @@ class PeapodsArbitrageBot {
     }
 
     /**
-     * Get WETH price in USDC terms
+     * Get TOAST price in USDC terms
      */
-    async getWethPriceInUsdc() {
-        // Get price from WETH/USDC Uniswap pair
+    async getToastPriceInUsdc() {
+        // Get price from TOAST/USDC Uniswap pair
         const pair = new ethers.Contract(
-            this.addresses.wethUsdcPair,
+            this.addresses.toastUsdcPair,
             UNISWAP_PAIR_ABI,
             this.provider
         );
@@ -180,29 +180,29 @@ class PeapodsArbitrageBot {
         const reserves = await pair.getReserves();
         const token0 = await pair.token0();
         
-        let wethReserve, usdcReserve;
-        if (token0.toLowerCase() === this.addresses.weth.toLowerCase()) {
-            wethReserve = reserves[0];
+        let toastReserve, usdcReserve;
+        if (token0.toLowerCase() === this.addresses.toast.toLowerCase()) {
+            toastReserve = reserves[0];
             usdcReserve = reserves[1];
         } else {
-            wethReserve = reserves[1];
+            toastReserve = reserves[1];
             usdcReserve = reserves[0];
         }
         
-        // Price = USDC reserves / WETH reserves
+        // Price = USDC reserves / TOAST reserves
         const price = parseFloat(ethers.formatUnits(usdcReserve, 6)) / 
-                     parseFloat(ethers.formatEther(wethReserve));
+                     parseFloat(ethers.formatEther(toastReserve));
         
         return price;
     }
 
     /**
-     * Get podETH price in USDC terms
+     * Get podTOAST price in USDC terms
      */
-    async getPodEthPriceInUsdc() {
-        // Method 1: Via pfUSDC/podETH pair
+    async getPodToastPriceInUsdc() {
+        // Method 1: Via pfUSDC-31/podTOAST pair
         const pair = new ethers.Contract(
-            this.addresses.pfUsdcPodEthPair,
+            this.addresses.pfUsdcPodToastPair,
             UNISWAP_PAIR_ABI,
             this.provider
         );
@@ -210,21 +210,21 @@ class PeapodsArbitrageBot {
         const reserves = await pair.getReserves();
         const token0 = await pair.token0();
         
-        let pfUsdcReserve, podEthReserve;
+        let pfUsdcReserve, podToastReserve;
         if (token0.toLowerCase() === this.addresses.pfUsdcVault.toLowerCase()) {
             pfUsdcReserve = reserves[0];
-            podEthReserve = reserves[1];
+            podToastReserve = reserves[1];
         } else {
             pfUsdcReserve = reserves[1];
-            podEthReserve = reserves[0];
+            podToastReserve = reserves[0];
         }
         
         // Convert pfUSDC to USDC equivalent
         const pfUsdcToUsdc = await this.pfUsdcVault.convertToAssets(pfUsdcReserve);
         
-        // Price = USDC equivalent / podETH reserves
+        // Price = USDC equivalent / podTOAST reserves
         const price = parseFloat(ethers.formatUnits(pfUsdcToUsdc, 6)) / 
-                     parseFloat(ethers.formatEther(podEthReserve));
+                     parseFloat(ethers.formatEther(podToastReserve));
         
         return price;
     }
@@ -233,25 +233,25 @@ class PeapodsArbitrageBot {
      * Calculate optimal flash loan amount based on price gap
      */
     async calculateOptimalFlashLoanAmount(priceGapPercent) {
-        // Use your strategy's optimal sizing
+        // Conservative sizing for smaller pools
         let optimalSize;
-        if (priceGapPercent >= 3.0 && priceGapPercent < 4.0) {
-            optimalSize = ethers.parseUnits('30000', 6); // $30K
-        } else if (priceGapPercent >= 4.0 && priceGapPercent < 5.0) {
-            optimalSize = ethers.parseUnits('60000', 6); // $60K
-        } else if (priceGapPercent >= 5.0 && priceGapPercent < 6.0) {
-            optimalSize = ethers.parseUnits('95000', 6); // $95K
+        if (priceGapPercent >= 8.0) {
+            optimalSize = ethers.parseUnits('500', 6); // $500 for high gaps
         } else if (priceGapPercent >= 6.0) {
-            optimalSize = ethers.parseUnits('150000', 6); // $150K
+            optimalSize = ethers.parseUnits('300', 6); // $300
+        } else if (priceGapPercent >= 4.0) {
+            optimalSize = ethers.parseUnits('200', 6); // $200
+        } else if (priceGapPercent >= 3.0) {
+            optimalSize = ethers.parseUnits('100', 6); // $100
         } else {
-            optimalSize = ethers.parseUnits('10000', 6); // Default smaller size
+            optimalSize = ethers.parseUnits('50', 6); // $50 default
         }
         
         // Check available liquidity in pfUSDC vault
         const vaultLiquidity = await this.pfUsdcVault.totalAvailableAssets();
         
-        // Use max 50% of available liquidity
-        const maxAmount = vaultLiquidity / 2n;
+        // Use max 5% of available liquidity (much more conservative)
+        const maxAmount = vaultLiquidity / 20n;
         
         return optimalSize < maxAmount ? optimalSize : maxAmount;
     }
@@ -262,34 +262,33 @@ class PeapodsArbitrageBot {
     buildArbitrageParams(minProfitAmount) {
         return {
             usdcToken: this.addresses.usdc,
-            wethToken: this.addresses.weth,
+            wethToken: this.addresses.toast, // Using TOAST as the underlying asset
             usdcVault: this.addresses.pfUsdcVault,
-            podETH: this.addresses.podETH,
-            pfUsdcPodEthPair: this.addresses.pfUsdcPodEthPair,
-            wethUsdcPair: this.addresses.wethUsdcPair,
+            podETH: this.addresses.podTOAST, // Using podTOAST
+            pfUsdcPodEthPair: this.addresses.pfUsdcPodToastPair,
+            wethUsdcPair: this.addresses.toastUsdcPair,
             minProfitAmount: minProfitAmount,
             maxSlippage: 200 // 2%
         };
     }
 }
 
-// Contract addresses configuration
-// 🚨 REPLACE THESE WITH YOUR ACTUAL DEPLOYED CONTRACT ADDRESSES
+// Contract addresses configuration - pToastLVF Pod
 const CONTRACT_ADDRESSES = {
     // Core tokens
-    usdc: '0xA0b86a33E6441E60C675f0a5c32a3c5bDdEA5dD8', // USDC token
-    weth: '0x4200000000000000000000000000000000000006', // WETH token
+    usdc: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // USDC token
+    toast: '0x21f8c472D1702919aF0AF57a9E2926f2c1FB67C5', // TOAST token (underlying asset)
     
-    // Peapods contracts (created by factories)
-    podETH: '0x...', // DecentralizedIndex for WETH (created by WeightedIndexFactory)
-    pfUsdcVault: '0x...', // LendingAssetVault for USDC (created by LendingAssetVaultFactory)
+    // Peapods contracts
+    podTOAST: '0x3bd21199b84Dd0b4d573a58E28E919d8A084c0Cf', // pToastLVF (DecentralizedIndex)
+    pfUsdcVault: '0x...', // pfUSDC-31 LendingAssetVault (need to find this address)
     
     // Uniswap V2 pairs
-    pfUsdcPodEthPair: '0x...', // pfUSDC/podETH pair
-    wethUsdcPair: '0x...', // WETH/USDC pair
+    pfUsdcPodToastPair: '0x6557B01F11d404d4DB9Af94469bF527D394d3072', // pfUSDC-31/pToastLVF pair
+    toastUsdcPair: '0x...', // TOAST/USDC pair (need to find this)
     
     // Your deployed arbitrage bot
-    arbitrageBot: '0x...', // Your deployed PeapodsArbitrageBot contract
+    arbitrageBot: '0x1a83859496f515c7d147a2f62a20bfa53C48700A', // Deployed on Base mainnet
     
     // Aave
     aaveAddressesProvider: '0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb' // Aave AddressesProvider (Base)
