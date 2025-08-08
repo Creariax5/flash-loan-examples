@@ -98,7 +98,7 @@ contract AaveFlashLoanWithSwap is IFlashLoanSimpleReceiver, Ownable, ReentrancyG
         uint256 premium,
         address initiator,
         bytes calldata params
-    ) external override returns (bool) {
+    ) external virtual override returns (bool) {
         _validateFlashLoanCallback(initiator);
         _verifyFlashLoanReceived(asset, amount);
 
