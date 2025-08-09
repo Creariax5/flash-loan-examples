@@ -39,7 +39,7 @@ async function main() {
         pfpOHMo27Vault: ARBITRUM_ADDRESSES.pfUSDC6,
         peaPEASLiquidityPool: ARBITRUM_ADDRESSES.pPEASPool,
         isUndervaluedStrategy: true,
-        minProfitAmount: 0,
+        minProfitAmount: 1, // Set to 1 wei minimum profit instead of 0
         maxSlippage: 500
     };
     
