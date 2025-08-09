@@ -268,11 +268,11 @@ class PeapodsArbitrageBot {
     buildArbitrageParams(minProfitAmount) {
         return {
             usdcToken: this.addresses.usdc,
-            wethToken: this.addresses.weth, // Using WETH (will get from TOAST via pair)
+            wethToken: this.addresses.toast, // Pass TOAST as "wethToken" since debond gives us TOAST
             usdcVault: this.addresses.pfUsdcVault,
             podETH: this.addresses.podTOAST, // Using podTOAST
             pfUsdcPodEthPair: this.addresses.pfUsdcPodToastPair,
-            wethUsdcPair: this.addresses.toastWethPair, // Using TOAST/WETH pair
+            wethUsdcPair: this.addresses.wethUsdcPair, // Use actual WETH/USDC pair for final swap
             minProfitAmount: minProfitAmount,
             maxSlippage: 200 // 2%
         };
@@ -293,6 +293,7 @@ const CONTRACT_ADDRESSES = {
     // Uniswap V2 pairs
     pfUsdcPodToastPair: BASE_ADDRESSES.pfUsdcPodToastPair,
     toastWethPair: BASE_ADDRESSES.TOAST_WETH_PAIR,
+    wethUsdcPair: BASE_ADDRESSES.WETH_USDC_PAIR, // Added WETH/USDC pair
     
     // Your deployed arbitrage bot
     arbitrageBot: '0x1a83859496f515c7d147a2f62a20bfa53C48700A', // Deployed on Base mainnet
