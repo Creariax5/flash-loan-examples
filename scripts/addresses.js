@@ -36,7 +36,7 @@ const ARBITRUM_ADDRESSES = {
     
     // CRITICAL: PEAS Trading Pools (FOUND!)
     PEAS_WETH_V3_POOL: "0x23D17764F41AEa93fdbb5beffA83571f0bF3f8b2", // PEAS/WETH V3 pool (ACTIVE!)
-    PEAS_WETH_FEE: 0.3, // 0.3% fee tier
+    PEAS_WETH_FEE: 10000, // 1% fee tier (corrected)
     
     // WETH/USDC pool (for WETH → USDC conversion)
     WETH_USDC_V3_POOL: "0xC6962004f452bE9203591991D15f6b388e09E8D0", // Most liquid WETH/USDC pool
