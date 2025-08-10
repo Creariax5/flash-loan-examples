@@ -12,12 +12,32 @@ const BASE_ADDRESSES = {
     peaPEAS: "0x821a80CA29f52216DaE0E919412CbBB0A4CB9631", // peaPEAS pod (low TVL)
     pfpOHMo27: "0x70E0a9F7923988886D62DA8b13415E31Ce27ebb2", // pfpOHMo-27 vault (OHM-based)
     
-    // Known working pairs
-    WETH_USDC_PAIR: "0xab067c01C7F5734da168C699Ae9d23a4512c9FdB", // BaseSwap working pair
-    UNISWAP_V3_FACTORY: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
+    // NEW podETH setup (Base) - Good opportunity
+    podETH: "0x433aA366c4dc76aaB00C02E17531ca1A8570De0C", // podETH token (DecentralizedIndex)
+    pfUSDC108: "0xAbE754EE72Be07F2707a26Da0724Ac5619295b04", // pfUSDC-108 vault (LendingAssetVault - ERC4626)
+    podETH_pfUSDC_PAIR: "0xEd988C42840517989ca99458153fD204899Af09b", // podETH/pfUSDC-108 LP pair (Uniswap V2)
+    spodETH: "0x6f7f8436C9014ab4A26bb4DEcbC457117348a1bE", // spodETH (staked podETH LP tokens)
+    aspodETH: "0xF064e1F5617dca198DF8d132eF6e05820436D17e", // aspodETH (AutoCompoundingPodLp vault)
+    
+    // Peapods utilities
+    INDEX_UTILS: "0x490b03c6afe733576cf1f5d2a821cf261b15826d", // IndexUtils contract for bonding/debonding
+    
+    // Missing addresses we may need to find:
+    // ZAPPER: "0x???", // Zapper contract for token conversions
+    // LP_STAKING_POOL: "0x???", // podETH LP staking pool address
+    // DEX_ADAPTER: "0x???", // DexAdapter used by IndexUtils
+    
+    // DEX pairs and infrastructure
+    WETH_USDC_PAIR: "0xd0b53D9277642d899DF5C87A3966A349A798F224", // Correct WETH/USDC pair on Base
+    UNISWAP_V3_FACTORY: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+    
+    // DEX Routers on Base
+    UNISWAP_V3_ROUTER: "0x2626664c2603336E57B271c5C0b26F421741e481", // Uniswap V3 SwapRouter02 on Base
+    SUSHISWAP_V2_ROUTER: "0x6BDED42c6DA8FBf0d2bA55B2fa120C5e0c8D7891", // SushiSwap V2 Router on Base
+    BASESWAP_ROUTER: "0x327Df1E6de05895d2ab08513aaDD9313Fe505d86", // BaseSwap Router on Base
 };
 
-// Arbitrum addresses (OPTIMAL - $5.3M TVL!)
+// // Arbitrum addresses (OPTIMAL - $5.3M TVL!)
 const ARBITRUM_ADDRESSES = {
     PoolAddressesProvider: "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb", // Aave V3 on Arbitrum
     Pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD", // Aave V3 Pool on Arbitrum
@@ -58,8 +78,9 @@ const ARBITRUM_ADDRESSES = {
     UNISWAP_V3_FACTORY: "0x1F98431c8aD98523631AE4a59f267346ea31F984", // Uniswap V3 Factory on Arbitrum
     UNISWAP_V3_ROUTER: "0xE592427A0AEce92De3Edee1F18E0157C05861564", // Uniswap V3 Router on Arbitrum
     
-    // Updated Arbitrage Contract (with corrected pod interfaces)
-    ARBITRAGE_CONTRACT: "0x6adc5701EF1Ea449f3F046EBFF2Fc1c455140d57"
+    // Updated Arbitrage Contracts
+    OLD_ARBITRAGE_CONTRACT: "0x6adc5701EF1Ea449f3F046EBFF2Fc1c455140d57", // PeaPEASArbitrageBot (BROKEN - wrong PEAS_WETH_FEE=3000)
+    ARBITRAGE_CONTRACT: "0xbAc1f16aC416A1b9053f6F85354d653edAde6727", // PeaPEASArbitrageBotCorrected (FIXED - correct fee tiers)
 };
 
 // Sepolia addresses (for testing)

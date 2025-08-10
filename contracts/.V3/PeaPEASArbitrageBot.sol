@@ -62,15 +62,9 @@ interface IPfpOHMo27Vault {
     function convertToAssets(uint256 shares) external view returns (uint256 assets);
 }
 
-// IUniswapV2Pair interface is imported from AaveFlashLoanWithSwap.sol
-
 /**
- * @title PeaPEASArbitrageBotCorrected
- * @dev CORRECTED Arbitrage bot for peaPEAS ecosystem using Aave flash loans
- * 
- * FIXES:
- * - PEAS_WETH_FEE corrected to 10000 (1.0% fee tier that actually exists)
- * - WETH_USDC_FEE set to 500 (0.05% fee tier with highest liquidity)
+ * @title PeaPEASArbitrageBot
+ * @dev Arbitrage bot for peaPEAS ecosystem using Aave flash loans
  * 
  * Two Strategies:
  * 
@@ -90,20 +84,20 @@ interface IPfpOHMo27Vault {
  * 5. PEAS → USDC (Uniswap V3)
  * 6. Repay flash loan + profit
  */
-contract PeaPEASArbitrageBotCorrected is AaveFlashLoanWithSwap {
+contract PeaPEASArbitrageBot is AaveFlashLoanWithSwap {
     
     // ============ State Variables ============
     
     uint256 public constant MAX_SLIPPAGE = 300; // 3%
     uint256 public constant MIN_PROFIT_BASIS_POINTS = 10; // 0.1% minimum profit
     
-    // Arbitrum addresses - CORRECTED FEE TIERS
+    // Base mainnet addresses - UPDATED for Arbitrum
     address public constant UNISWAP_V3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564; // Arbitrum V3 Router
     address public constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1; // WETH on Arbitrum
     address public constant PEAS_WETH_V3_POOL = 0x23D17764F41AEa93fdbb5beffA83571f0bF3f8b2;  // PEAS/WETH pool
     address public constant WETH_USDC_V3_POOL = 0xC6962004f452bE9203591991D15f6b388e09E8D0;  // WETH/USDC pool
-    uint24 public constant PEAS_WETH_FEE = 10000; // 1.0% fee tier - CORRECTED (was 3000)
-    uint24 public constant WETH_USDC_FEE = 500;   // 0.05% fee tier - CORRECTED (highest liquidity)
+    uint24 public constant PEAS_WETH_FEE = 10000; // 1% fee tier for PEAS/WETH (CORRECTED for Arbitrum)
+    uint24 public constant WETH_USDC_FEE = 500;  // 0.05% fee tier for WETH/USDC
     
     // ============ Events ============
     
@@ -561,7 +555,7 @@ contract PeaPEASArbitrageBotCorrected is AaveFlashLoanWithSwap {
         uint256 reserveIn = isToken0 ? reserve0 : reserve1;
         uint256 reserveOut = isToken0 ? reserve1 : reserve0;
         
-        // Uniswap V2 formula with 0.3% fee (standard for all V2 pools)
+        // Uniswap V2 formula with 0.3% fee
         uint256 amountInWithFee = amountIn * 997;
         uint256 numerator = amountInWithFee * reserveOut;
         uint256 denominator = (reserveIn * 1000) + amountInWithFee;
