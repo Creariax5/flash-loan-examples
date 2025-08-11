@@ -30,7 +30,7 @@ async function main() {
 
   // Gas config to avoid replacement fee error
   const gasConfig = {
-    gasPrice: ethers.parseUnits("0.1", "gwei"), // Higher gas price
+    gasPrice: ethers.parseUnits("0.01", "gwei"), // Higher gas price
     gasLimit: 100000
   };
 
