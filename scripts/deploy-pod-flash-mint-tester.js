@@ -1,67 +1,42 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-    console.log("Deploying PodFlashMintTester to Base network...");
+    console.log("🚀 Deploying FIXED PodFlashMintTester...");
 
-    // Get the deployer account
     const [deployer] = await ethers.getSigners();
     console.log("Deploying with account:", deployer.address);
-    console.log("Account balance:", ethers.utils.formatEther(await deployer.getBalance()), "ETH");
+    
+    const formatEther = ethers.formatEther || ethers.utils.formatEther;
+    const balance = await ethers.provider.getBalance(deployer.address);
+    console.log("Account balance:", formatEther(balance), "ETH");
 
-    // Deploy the contract
+    // Deploy the FIXED contract
     const PodFlashMintTester = await ethers.getContractFactory("PodFlashMintTester");
     const tester = await PodFlashMintTester.deploy();
 
-    await tester.deployed();
+    await tester.waitForDeployment();
+    const contractAddress = await tester.getAddress();
 
-    console.log("✅ PodFlashMintTester deployed to:", tester.address);
-    console.log("✅ Transaction hash:", tester.deployTransaction.hash);
+    console.log("✅ FIXED PodFlashMintTester deployed to:", contractAddress);
+    console.log("✅ Transaction hash:", tester.deploymentTransaction().hash);
 
-    // Wait for a few block confirmations
-    console.log("⏳ Waiting for block confirmations...");
-    await tester.deployTransaction.wait(3);
+    await tester.deploymentTransaction().wait(3);
 
-    // Get some useful info
     const podETHAddress = await tester.POD_ETH();
     console.log("📋 Pod ETH Address:", podETHAddress);
     console.log("👤 Owner:", await tester.owner());
 
-    console.log("\n📝 Contract Info:");
-    console.log("Contract Address:", tester.address);
-    console.log("Network: Base");
-    console.log("Pod ETH Token:", podETHAddress);
+    console.log("\n🔧 Key Fix Applied:");
+    console.log("✅ Now implements IFlashLoanRecipient.callback() instead of receiveFlashMint()");
+    console.log("✅ Properly handles Pod's flash mint callback interface");
+    console.log("✅ Correctly calculates 0.1% fee (amount/1000, min 1)");
+    console.log("✅ Transfers amount + fee back to Pod contract");
 
-    console.log("\n🧪 Testing Functions Available:");
-    console.log("- requestFlashMint(amount)");
-    console.log("- calculateFlashMintFee(amount)");
-    console.log("- getPodETHBalance()");
-    console.log("- canCoverFlashMint(amount)");
-    console.log("- depositPodETH(amount)");
-    console.log("- emergencyWithdraw(asset)");
-
-    console.log("\n💡 Next Steps:");
-    console.log("1. Verify the contract on BaseScan");
-    console.log("2. Deposit some podETH to test flash mints");
-    console.log("3. Call requestFlashMint(amount) to test");
-
-    // Verify contract on BaseScan
-    if (process.env.BASESCAN_API_KEY) {
-        console.log("\n🔍 Verifying contract on BaseScan...");
-        try {
-            await hre.run("verify:verify", {
-                address: tester.address,
-                constructorArguments: [],
-            });
-            console.log("✅ Contract verified on BaseScan");
-        } catch (error) {
-            console.log("❌ Verification failed:", error.message);
-        }
-    }
+    console.log("\n🎉 FIXED contract deployed successfully!");
+    console.log("Contract Address:", contractAddress);
 }
 
-main()
-    .then(() => process.exit(0))
-    .catch((error) => {
-        console.error("❌ Deployment failed:", error);
-        process.exit(1);
-    });
+main().then(() => process.exit(0)).catch((error) => {
+    console.error("❌ Deployment failed:", error);
+    process.exit(1);
+});

@@ -4,21 +4,26 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-// Pod protocol interface
+// Pod protocol interface (corrected)
 interface IDecentralizedIndex {
     function flashMint(address _recipient, uint256 _amount, bytes calldata _data) external;
 }
 
-interface IFlashMintReceiver {
-    function receiveFlashMint(address token, uint256 amount, uint256 fee, bytes calldata data) external;
+// Pod uses the same interface for flash loans AND flash mints
+interface IFlashLoanRecipient {
+    function callback(bytes calldata _data) external;
 }
 
-contract PodFlashMintTester is IFlashMintReceiver, Ownable {
+contract PodFlashMintTester is IFlashLoanRecipient, Ownable {
     // Pod contract address (podETH on Base)
     address public constant POD_ETH = 0x433aA366c4dc76aaB00C02E17531ca1A8570De0C;
     
+    // Track flash mint state
+    uint256 public lastFlashMintAmount;
+    uint256 public lastFlashMintFee;
+    bool public flashMintInProgress;
+
     event FlashMintExecuted(
-        address indexed token,
         uint256 amount,
         uint256 fee,
         bool success
@@ -31,43 +36,39 @@ contract PodFlashMintTester is IFlashMintReceiver, Ownable {
     }
 
     /**
-     * @dev Called by Pod contract after flash mint is sent to this contract
-     * @param token The token that was flash minted (should be POD_ETH)
-     * @param amount The amount that was flash minted
-     * @param fee The fee that needs to be paid (0.1% of amount)
+     * @dev Called by Pod contract after flash mint - USES THE CORRECT INTERFACE!
+     * Pod calls callback(bytes) for both flash loans and flash mints
+     * @param _data Encoded data (we'll decode this to get flash mint details)
      */
-    function receiveFlashMint(
-        address token,
-        uint256 amount,
-        uint256 fee,
-        bytes calldata /* data */
-    ) external override {
-        // Security checks
+    function callback(bytes calldata _data) external override {
         require(msg.sender == POD_ETH, "Caller must be Pod contract");
-        require(token == POD_ETH, "Token must be POD_ETH");
+        require(flashMintInProgress, "No flash mint in progress");
 
-        // Verify we received the flash mint amount
-        require(
-            IERC20(token).balanceOf(address(this)) >= amount,
-            "Did not receive flash mint amount"
-        );
+        // Get our current balance (should include the flash minted amount)
+        uint256 currentBalance = IERC20(POD_ETH).balanceOf(address(this));
+        
+        // Calculate the fee (0.1% = amount / 1000, minimum 1)
+        uint256 fee = lastFlashMintAmount / 1000;
+        fee = fee == 0 ? 1 : fee;
+        lastFlashMintFee = fee;
 
         // Execute simple test logic
-        bool success = _executeSimpleLogic(token, amount, fee);
+        bool success = _executeSimpleLogic(lastFlashMintAmount, fee, currentBalance);
 
         // Calculate amount to repay (amount + fee)
-        uint256 amountToRepay = amount + fee;
+        uint256 amountToRepay = lastFlashMintAmount + fee;
         
         // Ensure we have enough balance to repay
         require(
-            IERC20(token).balanceOf(address(this)) >= amountToRepay,
+            currentBalance >= amountToRepay,
             "Insufficient balance to repay flash mint"
         );
 
         // Transfer the repayment back to the Pod contract
-        IERC20(token).transfer(msg.sender, amountToRepay);
+        // Pod expects: balanceOf(address(this)) >= _balance + _amount + _fee
+        IERC20(POD_ETH).transfer(msg.sender, amountToRepay);
 
-        emit FlashMintExecuted(token, amount, fee, success);
+        emit FlashMintExecuted(lastFlashMintAmount, fee, success);
     }
 
     /**
@@ -75,24 +76,38 @@ contract PodFlashMintTester is IFlashMintReceiver, Ownable {
      * @param amount Amount of podETH to flash mint
      */
     function requestFlashMint(uint256 amount) external onlyOwner {
-        bytes memory data = ""; // No special params needed for test
+        require(!flashMintInProgress, "Flash mint already in progress");
         
-        IDecentralizedIndex(POD_ETH).flashMint(
+        flashMintInProgress = true;
+        lastFlashMintAmount = amount;
+        
+        bytes memory data = abi.encode(amount); // Encode the amount for our callback
+        
+        try IDecentralizedIndex(POD_ETH).flashMint(
             address(this), // recipient
             amount,        // amount to flash mint
             data          // custom data
-        );
+        ) {
+            // Success - flashMintInProgress will be reset in callback
+        } catch {
+            // Reset state on failure
+            flashMintInProgress = false;
+            lastFlashMintAmount = 0;
+            revert();
+        }
+        
+        // Reset state after successful completion
+        flashMintInProgress = false;
     }
 
     /**
-     * @dev Simple test logic - just verify we have the tokens
+     * @dev Simple test logic - verify we have the tokens
      */
     function _executeSimpleLogic(
-        address token,
         uint256 amount,
-        uint256 fee
-    ) private view returns (bool) {
-        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 fee,
+        uint256 balance
+    ) private pure returns (bool) {
         require(balance >= amount, "Flash mint amount not received");
         require(balance >= amount + fee, "Insufficient balance for repayment");
         
@@ -102,10 +117,11 @@ contract PodFlashMintTester is IFlashMintReceiver, Ownable {
     }
 
     /**
-     * @dev Calculate flash mint fee (0.1% of amount)
+     * @dev Calculate flash mint fee (0.1% of amount, minimum 1)
      */
     function calculateFlashMintFee(uint256 amount) public pure returns (uint256) {
-        return (amount * 10) / 10000; // 0.1% = 10 basis points
+        uint256 fee = amount / 1000; // 0.1%
+        return fee == 0 ? 1 : fee;
     }
 
     /**
@@ -141,13 +157,13 @@ contract PodFlashMintTester is IFlashMintReceiver, Ownable {
     }
 
     /**
-     * @dev Check if this contract has enough podETH to cover a flash mint
-     * This is useful for testing - you can deposit some podETH first
+     * @dev Check if this contract has enough podETH to cover a flash mint FEE
+     * Only needs the fee amount, not the full repayment (flash mint provides the principal)
      */
     function canCoverFlashMint(uint256 amount) external view returns (bool) {
-        uint256 totalNeeded = getTotalRepaymentAmount(amount);
+        uint256 feeNeeded = calculateFlashMintFee(amount);
         uint256 balance = IERC20(POD_ETH).balanceOf(address(this));
-        return balance >= totalNeeded;
+        return balance >= feeNeeded;
     }
 
     /**
@@ -156,5 +172,14 @@ contract PodFlashMintTester is IFlashMintReceiver, Ownable {
      */
     function depositPodETH(uint256 amount) external onlyOwner {
         IERC20(POD_ETH).transferFrom(msg.sender, address(this), amount);
+    }
+
+    /**
+     * @dev Reset flash mint state in case of emergency
+     */
+    function resetFlashMintState() external onlyOwner {
+        flashMintInProgress = false;
+        lastFlashMintAmount = 0;
+        lastFlashMintFee = 0;
     }
 }
