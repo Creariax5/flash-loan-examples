@@ -1,184 +1,137 @@
-# Strategy Implementation Status
+# Arbitrage Strategy - Essential Implementation
 
-## ✅ What You Have (Working Scripts)
+## ✅ Working Components
+- **Flash mint podETH** ✅ (0.1% fee)
+- **Flash loan WETH** ✅ (10 DAI fee)  
+- **WETH ↔ podETH** ✅ (bond/debond)
+- **USDC ↔ pfUSDC** ✅ (vault deposit/redeem)
+- **WETH ↔ USDC** ✅ (Uniswap V3)
 
-### Core Conversion Functions
-- **USDC → pfUSDC** (deposit.js) - Vault deposit
-- **pfUSDC → USDC** (withdraw.js) - Vault withdrawal  
-- **WETH → podETH** (wrap.js) - Bond via IndexUtils
-- **podETH → WETH** (unwrap.js) - Debond via IndexUtils
+## ❌ Missing Components
+- **pfUSDC ↔ podETH** (Uniswap V2 - both directions)
+- **Price checker** (compare podETH vs WETH)
+- **Arbitrage executor** (single contract with both strategies)
 
-### Market Swaps  
-- **USDC → WETH** (swap.js) - Uniswap V3
-- **pfUSDC → podETH** (new script) - V2 router
+## Strategy Logic
 
-## ❌ Missing Critical Components
-
-### Market Swaps (Reverse Direction)
-- **WETH → USDC** - Need reverse of swap.js
-- **podETH → pfUSDC** - Need reverse of pfUSDC→podETH
-
-### Flash Loan Infrastructure
-- **Flash WETH borrow** - Aave/similar protocol
-- **Flash podETH mint** - Pod protocol flash mint
-- **Flash loan callback logic**
-
-### Strategy Logic
-- **Price checker** - Compare podETH vs WETH prices
-- **Arbitrage detector** - Identify profitable opportunities  
-- **Strategy executor** - Choose flash mint vs flash loan
-- **Profit calculator** - Account for all fees
-
-## 🎯 Solidity Contract Calls Needed
-
-### Strategy 1: podETH < WETH (Flash Mint Approach)
+### When podETH < WETH (Flash Mint Route)
 ```solidity
-// 1. Flash mint podETH ✅ NOW HAVE
-IDecentralizedIndex(0x433aA366c4dc76aaB00C02E17531ca1A8570De0C).flashMint(
-    address(this), 
-    amount, 
-    "" // callback data
-);
-
-// 2. Debond podETH → WETH ✅ HAVE
-IDecentralizedIndex(0x433aA366c4dc76aaB00C02E17531ca1A8570De0C).debond(
-    amount, 
-    [0x4200000000000000000000000000000000000006], // WETH
-    [100] // 100%
-);
-
-// 3. Swap WETH → USDC ❌ MISSING
-ISwapRouter(0x2626664c2603336E57B271c5C0b26F421741e481).exactInputSingle(
-    ExactInputSingleParams({
-        tokenIn: 0x4200000000000000000000000000000000000006, // WETH
-        tokenOut: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
-        fee: 500,
-        recipient: address(this),
-        amountIn: wethAmount,
-        amountOutMinimum: 0,
-        sqrtPriceLimitX96: 0
-    })
-);
-
-// 4. USDC → pfUSDC → podETH ❌ MISSING
-// 4a. USDC → pfUSDC ✅ HAVE
-IVault(0xAbE754EE72Be07F2707a26Da0724Ac5619295b04).deposit(usdcAmount, address(this));
-
-// 4b. pfUSDC → podETH ✅ HAVE
-IUniswapV2Router(0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24).swapExactTokensForTokens(
-    pfUsdcAmount,
-    0,
-    [0xAbE754EE72Be07F2707a26Da0724Ac5619295b04, 0x433aA366c4dc76aaB00C02E17531ca1A8570De0C],
-    address(this),
-    deadline
-);
-
-// 5. Return podETH + 0.1% fee (handled in callback)
-```
-
-### Strategy 2: podETH > WETH (Flash WETH Approach)
-```solidity
-// 1. Flash loan WETH ✅ NOW HAVE
-IDecentralizedIndex(0x433aA366c4dc76aaB00C02E17531ca1A8570De0C).flash(
-    address(this),
-    0x4200000000000000000000000000000000000006, // WETH
-    amount,
-    "" // callback data
-);
-
-// 2. Bond WETH → podETH ✅ HAVE  
-IIndexUtils(0x490b03c6afe733576cf1f5d2a821cf261b15826d).bond(
-    IDecentralizedIndex(0x433aA366c4dc76aaB00C02E17531ca1A8570De0C), // podETH
-    0x4200000000000000000000000000000000000006, // WETH
-    amount,
-    0 // minOut
-);
-
-// 3. podETH → pfUSDC → USDC ❌ MISSING
-// 3a. podETH → pfUSDC (reverse of pfUSDC→podETH)
-IUniswapV2Router(0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24).swapExactTokensForTokens(
-    podEthAmount,
-    0,
-    [0x433aA366c4dc76aaB00C02E17531ca1A8570De0C, 0xAbE754EE72Be07F2707a26Da0724Ac5619295b04],
-    address(this),
-    deadline
-);
-
-// 3b. pfUSDC → USDC ✅ HAVE
-IVault(0xAbE754EE72Be07F2707a26Da0724Ac5619295b04).redeem(
-    pfUsdcAmount,
-    address(this),
-    address(this)
-);
-
-// 4. USDC → WETH ✅ HAVE (reverse of WETH→USDC)
-ISwapRouter(0x2626664c2603336E57B271c5C0b26F421741e481).exactInputSingle(
-    ExactInputSingleParams({
-        tokenIn: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
-        tokenOut: 0x4200000000000000000000000000000000000006, // WETH
-        fee: 500,
-        recipient: address(this),
-        amountIn: usdcAmount,
-        amountOutMinimum: 0,
-        sqrtPriceLimitX96: 0
-    })
-);
-
-// 5. Return WETH + 10 DAI fee (handled in callback)
-```
-
-## 🔄 Required Callback Functions
-```solidity
-// For flash mint
-function receiveFlashMint(address token, uint256 amount, uint256 fee, bytes calldata data) external {
-    // Execute arbitrage logic here
-    // Must return `amount + fee` of `token` to msg.sender
+function executeArbitrage1() external {
+    // 1. Flash mint podETH (0.1% fee)
+    IDecentralizedIndex(podETH).flashMint(address(this), amount, "");
 }
 
-// For flash loan  
-function receiveFlash(address token, uint256 amount, uint256 fee, bytes calldata data) external {
-    // Execute arbitrage logic here  
-    // Must return `amount + fee` of `token` to msg.sender
-    // Fee is 10 DAI regardless of token borrowed
+function callback(bytes calldata) external override {
+    // 2. podETH → WETH (debond)
+    IERC20(podETH).approve(podETH, amount);
+    IDecentralizedIndex(podETH).debond(amount, [WETH], [100]);
+    
+    // 3. WETH → USDC (V3 swap)
+    IERC20(WETH).approve(uniV3Router, wethAmount);
+    ISwapRouter(uniV3Router).exactInputSingle(...);
+    
+    // 4. USDC → pfUSDC (vault deposit)
+    IERC20(USDC).approve(pfUSDC, usdcAmount);
+    IERC4626(pfUSDC).deposit(usdcAmount, address(this));
+    
+    // 5. pfUSDC → podETH (V2 swap)
+    IERC20(pfUSDC).approve(uniV2Router, pfUsdcAmount);
+    IUniswapV2Router(uniV2Router).swapExactTokensForTokens(
+        pfUsdcAmount, 0, [pfUSDC, podETH], address(this), deadline
+    );
+    
+    // 6. Repay flash mint (amount + fee)
+    IERC20(podETH).transfer(msg.sender, amount + fee);
 }
 ```
 
-## 📋 Required Approvals (Don't Forget!)
+### When podETH > WETH (Flash Loan Route)  
 ```solidity
-// Before debond (pod needs to burn tokens)
-IERC20(0x433aA366c4dc76aaB00C02E17531ca1A8570De0C).approve(0x433aA366c4dc76aaB00C02E17531ca1A8570De0C, amount);
+function executeArbitrage2() external {
+    // 1. Flash loan WETH (10 DAI fee)
+    IERC20(DAI).transferFrom(msg.sender, address(this), 10e18);
+    IDecentralizedIndex(podETH).flash(address(this), WETH, amount, "");
+}
 
-// Before Uniswap V3 swap  
-IERC20(tokenIn).approve(0x2626664c2603336E57B271c5C0b26F421741e481, amount);
-
-// Before vault deposit
-IERC20(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913).approve(0xAbE754EE72Be07F2707a26Da0724Ac5619295b04, amount);
-
-// Before V2 swap
-IERC20(tokenIn).approve(0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24, amount);
-
-// Before bond via IndexUtils
-IERC20(0x4200000000000000000000000000000000000006).approve(0x490b03c6afe733576cf1f5d2a821cf261b15826d, amount);
+function callback(bytes calldata) external override {
+    // 2. WETH → podETH (bond)
+    IERC20(WETH).approve(indexUtils, amount);
+    IIndexUtils(indexUtils).bond(podETH, WETH, amount, 0);
+    
+    // 3. podETH → pfUSDC (V2 swap)
+    IERC20(podETH).approve(uniV2Router, podEthAmount);
+    IUniswapV2Router(uniV2Router).swapExactTokensForTokens(
+        podEthAmount, 0, [podETH, pfUSDC], address(this), deadline
+    );
+    
+    // 4. pfUSDC → USDC (vault redeem)
+    IERC4626(pfUSDC).redeem(pfUsdcAmount, address(this), address(this));
+    
+    // 5. USDC → WETH (V3 swap) 
+    IERC20(USDC).approve(uniV3Router, usdcAmount);
+    ISwapRouter(uniV3Router).exactInputSingle(...);
+    
+    // 6. Repay flash loan
+    IERC20(WETH).transfer(msg.sender, amount);
+}
 ```
 
-## 🔧 Contract Addresses
-```solidity
-address constant USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
-address constant WETH = 0x4200000000000000000000000000000000000006;
-address constant pfUSDC = 0xAbE754EE72Be07F2707a26Da0724Ac5619295b04;
-address constant podETH = 0x433aA366c4dc76aaB00C02E17531ca1A8570De0C;
-address constant UNISWAP_V3 = 0x2626664c2603336E57B271c5C0b26F421741e481;
-address constant UNISWAP_V2 = 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24;
-address constant INDEX_UTILS = 0x490b03c6afe733576cf1f5d2a821cf261b15826d;
+## Missing V2 Swap Implementation
+
+### pfUSDC → podETH
+```javascript
+// Script: scripts/swap-pfusdc-to-podeth.js
+const path = [pfUSDC, podETH];
+await uniV2Router.swapExactTokensForTokens(
+    amount, 0, path, recipient, deadline
+);
 ```
 
-## ✅ Status Summary
-- **Flash operations**: ✅ COMPLETE (both flash mint and flash loan)
-- **Core conversions**: ✅ COMPLETE (wrap/unwrap, vault deposit/redeem)  
-- **Missing swaps**: ❌ WETH→USDC, podETH→pfUSDC (need reverse scripts)
-- **Callback functions**: ❌ Need to implement receiveFlashMint() and receiveFlash()
+### podETH → pfUSDC  
+```javascript
+// Script: scripts/swap-podeth-to-pfusdc.js  
+const path = [podETH, pfUSDC];
+await uniV2Router.swapExactTokensForTokens(
+    amount, 0, path, recipient, deadline
+);
+```
 
-**Next step**: Create the 2 missing swap scripts, then you have everything needed!
+## Price Checker Contract
+```solidity
+contract PriceChecker {
+    function getPodETHPrice() external view returns (uint256) {
+        // Get podETH/pfUSDC price from V2 pair
+    }
+    
+    function getWETHPrice() external view returns (uint256) {
+        // Get WETH/USDC price from V3 pool
+    }
+    
+    function isArbitrageProfitable() external view returns (bool, uint8) {
+        // Compare prices, return (profitable, strategy)
+        // strategy: 1 = flash mint, 2 = flash loan
+    }
+}
+```
 
-## 💡 Quick Wins
-Your current scripts can be **combined manually** to test the full flow without flash loans first - just use your own capital to verify the conversion chain works.
+## Final Arbitrage Contract
+```solidity
+contract PodETHArbitrage is IFlashLoanRecipient {
+    // Combine both strategies + price checking
+    // Add profit calculation
+    // Add slippage protection
+    // Add emergency functions
+}
+```
+
+## Implementation Priority
+1. **Create missing V2 swap scripts** (pfUSDC ↔ podETH)
+2. **Build price checker** (compare podETH vs WETH)  
+3. **Combine into single arbitrage contract**
+4. **Add profit calculation and safety checks**
+5. **Deploy and test with small amounts**
+
+## Key Success Metrics
+- **Profitable after fees**: Flash mint (0.1%) + DEX fees (0.35%) + gas
+- **Execution speed**: Complete arbitrage in single transaction
+- **Risk management**: Slippage protection + emergency exits
