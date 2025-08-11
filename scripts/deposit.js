@@ -34,7 +34,7 @@ async function main() {
     console.log("1️⃣ Approving USDC...");
     const approveTx = await usdc.approve(ADDRESSES.pfUSDCVault, depositAmount, {
       gasLimit: 100000,
-      gasPrice: ethers.parseUnits("0.01", "gwei") // Low gas price for Base
+      gasPrice: ethers.parseUnits("0.1", "gwei") // Low gas price for Base
     });
     
     console.log(`   Approve tx: ${approveTx.hash}`);
@@ -45,7 +45,7 @@ async function main() {
     console.log("2️⃣ Depositing to vault...");
     const depositTx = await vault.deposit(depositAmount, wallet.address, {
       gasLimit: 300000,
-      gasPrice: ethers.parseUnits("0.01", "gwei")
+      gasPrice: ethers.parseUnits("0.1", "gwei")
     });
     
     console.log(`   Deposit tx: ${depositTx.hash}`);

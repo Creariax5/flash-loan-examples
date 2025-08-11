@@ -1,5 +1,3 @@
-Ah perfect! You need **two opposite strategies** depending on the price relationship. Here they are:
-
 ## 🔽 Strategy 1: podETH is CHEAP (Below WETH)
 
 **Objective:** Buy cheap podETH → Convert to expensive WETH
@@ -82,5 +80,3 @@ function executeArbitrage(uint256 podETHPrice, uint256 wethPrice, uint256 amount
     }
 }
 ```
-
-**Key insight:** You're arbitraging the **bond/debond conversion rate** vs **market trading prices** between podETH and WETH! 🎯
