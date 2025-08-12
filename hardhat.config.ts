@@ -4,6 +4,12 @@ require("dotenv").config();
 
 module.exports = {
   solidity: "0.8.19",
+  settings: {
+    optimizer: {
+      enabled: true,
+      runs: 200
+    }
+  },
   networks: {
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
@@ -16,7 +22,7 @@ module.exports = {
       chainId: 8453,
       maxFeePerGas: 20000000,      // 0.02 gwei max
       maxPriorityFeePerGas: 1000000, // 0.001 gwei priority
-      gasLimit: 1000000,
+      gasLimit: 2000000,
     },
     arbitrum: {
       url: process.env.ARBITRUM_RPC_URL || "https://arb1.arbitrum.io/rpc", 
