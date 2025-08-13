@@ -1,11 +1,11 @@
 const { ethers } = require("hardhat");
 
-const ARBITRAGE_CONTRACT_ADDRESS = "0x7C9dc0d95fd50FAbd69191Be7Db37b7548046b32";
+const ARBITRAGE_CONTRACT_ADDRESS = "0x02999374768C86BE73ad5bA9b1e10Ec0CD046c19";
 
 async function main() {
     const [signer] = await ethers.getSigners();
     
-    console.log("Executing arbitrage with amount: 0.001 podETH");
+    console.log("Executing arbitrage with amount: 0.00001 podETH");
     console.log("From address:", signer.address);
     console.log("Contract address:", ARBITRAGE_CONTRACT_ADDRESS);
     
@@ -19,7 +19,7 @@ async function main() {
         console.log("✓ Contract exists");
         
         const arbitrage = await ethers.getContractAt("SimpleArbitrage", ARBITRAGE_CONTRACT_ADDRESS);
-        const testAmount = ethers.parseEther("0.001");
+        const testAmount = ethers.parseEther("0.00001");
         
         // Try to check owner (optional, skip if it fails)
         try {

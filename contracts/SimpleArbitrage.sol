@@ -116,7 +116,7 @@ contract SimpleArbitrage is IFlashLoanRecipient {
         // 5. Repay flash mint (amount + 0.1% fee)
         uint256 fee = flashAmount / 1000;
         if (fee == 0) fee = 1;
-        IERC20(POD_ETH).transfer(POD_ETH, flashAmount + fee);
+        IERC20(POD_ETH).transfer(msg.sender, flashAmount + fee);
     }
     
     function withdraw(address token) external onlyOwner {
