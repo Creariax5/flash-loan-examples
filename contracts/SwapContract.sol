@@ -21,6 +21,14 @@ interface IUniswapV2Router {
         address to,
         uint deadline
     ) external returns (uint[] memory amounts);
+    
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external;
 }
 
 interface ISwapRouter {
@@ -69,7 +77,7 @@ contract SwapContract {
         path[0] = POD_ETH;
         path[1] = PF_USDC_VAULT;
         
-        IUniswapV2Router(V2_ROUTER).swapExactTokensForTokens(
+        IUniswapV2Router(V2_ROUTER).swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amount,
             0,
             path,
@@ -86,15 +94,13 @@ contract SwapContract {
             tokenIn: USDC,
             tokenOut: WETH,
             fee: 500,
-            recipient: address(this),
+            recipient: msg.sender,
             amountIn: amount,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });
         
-        uint256 amountOut = ISwapRouter(V3_ROUTER).exactInputSingle(params);
-        IWETH(WETH).withdraw(amountOut);
-        payable(msg.sender).transfer(amountOut);
+        ISwapRouter(V3_ROUTER).exactInputSingle(params);
     }
 
     function swapEthToUsdc() external payable {
