@@ -31,7 +31,7 @@ interface IFlashLoanSimpleReceiver {
     ) external returns (bool);
 }
 
-contract AaveFlashBorrower is IFlashLoanSimpleReceiver, Ownable {
+contract AaveFlashBorrowerOld is IFlashLoanSimpleReceiver, Ownable {
     IPoolAddressesProvider public immutable addressesProvider;
     IPool public immutable pool;
 

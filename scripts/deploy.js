@@ -1,12 +1,14 @@
 const { ethers } = require("hardhat");
 
+const AAVE_POOL_PROVIDER = "0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D";
+
 async function main() {
     const [deployer] = await ethers.getSigners();
     console.log("Deploying with:", deployer.address);
 
-    const PodFlashMintTester = await ethers.getContractFactory("SimpleArbitrage");
-    const tester = await PodFlashMintTester.deploy();
-    
+    const Contract = await ethers.getContractFactory("pSimmiArbitrage");
+    const tester = await Contract.deploy(AAVE_POOL_PROVIDER);
+
     await tester.waitForDeployment();
     const contractAddress = await tester.getAddress();
     
@@ -14,8 +16,7 @@ async function main() {
     
     // Wait for confirmations
     await tester.deploymentTransaction().wait(3);
-    
-    console.log("Owner:", await tester.owner());
+    console.log("✓ Deployment confirmed");
 }
 
 main()

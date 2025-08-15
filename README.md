@@ -78,3 +78,52 @@ scripts/
 - Flash loan fee: 0.05% (5 basis points)
 - Sepolia: ~$0.0005 fee + ~$2-5 gas
 - Base: ~$0.50 fee + ~$0.10-0.50 gas
+
+
+
+
+
+
+
+uint256 testAmount = amount / 10; // Use only 10% for testing to ensure enough left for repayment
+        
+        // ETH -> POD_ETH
+        ISimpleMultiWrapper(WRAPPER).wrap{value: testAmount}();
+
+        // POD_ETH -> ETH
+        uint256 ethBalance = address(this).balance;
+        if (ethBalance > 0) {
+            IPodETH(POD_ETH).approve(WRAPPER, testAmount);
+            ISimpleMultiWrapper(WRAPPER).unwrap(testAmount);
+        }
+        
+        uint256 podBalanceAfter = IERC20(POD_ETH).balanceOf(address(this));
+        require(podBalanceAfter >= amount + premium, "Not enough POD_ETH after wrap/unwrap cycle");
+
+
+USDC -> pfUSDC
+pfUSDC -> podETH
+podETH -> ETH
+ETH -> USDC
+
+
+
+
+____________________________________
+
+1. +USDC (flashloan AAVE)
+2. USDC -> pfUSDC (deposit)
+3. pfUSDC -> pSimmi (swap pool V2)
+4. pSimmi -> simmi (unwrap)
+5. simmi -> ETH (swap pool V3)
+6. ETH -> USDC (swap pool V3)
+7. -USDC (repay flashloan AAVE)
+
+
+address constant PSIMMI = 0x4707a4535df0e7589B4bfF2A7362FB114D05cC14
+address constant SIMMI = 0x161e113B8E9BBAEfb846F73F31624F6f9607bd44
+address constant WETH = 0x4200000000000000000000000000000000000006;
+address constant USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+address constant PF_USDC_VAULT = 0x02c9428716B6DC4062EB8ba1b2769704b9E24851;
+address constant V2_ROUTER = 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24;
+address constant V3_ROUTER = 0x2626664c2603336E57B271c5C0b26F421741e481;

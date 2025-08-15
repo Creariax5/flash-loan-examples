@@ -1,13 +1,13 @@
 const { ethers } = require("hardhat");
 
-const CONTRACT_ADDRESS = "0x7C9dc0d95fd50FAbd69191Be7Db37b7548046b32";
+const CONTRACT_ADDRESS = "0xA98397Ca7DF49C04F611896d8A3892789Bfa9Bd9";
 const POD_ETH = "0x433aA366c4dc76aaB00C02E17531ca1A8570De0C";
 
 async function main() {
     const [signer] = await ethers.getSigners();
-    
-    const contract = await ethers.getContractAt("SimpleArbitrage", CONTRACT_ADDRESS);
-    
+
+    const contract = await ethers.getContractAt("DebugArbitrage", CONTRACT_ADDRESS);
+
     // Check balance before
     const podETH = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", POD_ETH);
     const balanceBefore = await podETH.balanceOf(CONTRACT_ADDRESS);
