@@ -55,6 +55,14 @@ interface IUniswapV2Router {
         address to,
         uint deadline
     ) external returns (uint[] memory amounts);
+    
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external;
 }
 
 interface ISwapRouter {
@@ -174,7 +182,7 @@ contract pSimmiArbitrageSell is IFlashLoanSimpleReceiver, Ownable {
         path[0] = PSIMMI;
         path[1] = PF_USDC_VAULT;
         
-        IUniswapV2Router(V2_ROUTER).swapExactTokensForTokens(
+        IUniswapV2Router(V2_ROUTER).swapExactTokensForTokensSupportingFeeOnTransferTokens(
             pSimmi_balance,
             0,
             path,

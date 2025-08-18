@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-    const CONTRACT_ADDRESS = "0xF6bb56fFDDF15b37B82c802aECf606bEDE5EAda9";
+    const CONTRACT_ADDRESS = "0xdf6FA881c7668813D38714B93f9a075BF74E4467";
     const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
     // Very small amount - 1 USDC
@@ -12,8 +12,8 @@ async function main() {
     console.log("Signer:", signer.address);
     
     try {
-        const contract = await ethers.getContractAt("pSimmiArbitrageSell", CONTRACT_ADDRESS);
-
+        const contract = await ethers.getContractAt("pSimmiArbitrage", CONTRACT_ADDRESS);
+        
         // Calculate expected fee
         const fee = await contract.calculateFee(AMOUNT);
         const total = AMOUNT + fee;

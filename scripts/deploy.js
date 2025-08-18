@@ -6,7 +6,7 @@ async function main() {
     const [deployer] = await ethers.getSigners();
     console.log("Deploying with:", deployer.address);
 
-    const Contract = await ethers.getContractFactory("pSimmiArbitrageSell");
+    const Contract = await ethers.getContractFactory("podETHArbitrageBuy");
     const tester = await Contract.deploy(AAVE_POOL_PROVIDER);
 
     await tester.waitForDeployment();

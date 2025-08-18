@@ -1,18 +1,18 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-    const CONTRACT_ADDRESS = "0xF6bb56fFDDF15b37B82c802aECf606bEDE5EAda9";
+    const CONTRACT_ADDRESS = "0xd9b02bbf1ca144faeeD3d573e9059350B14D97cD";
     const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
-    // Very small amount - 1 USDC
-    const AMOUNT = ethers.parseUnits("1", 6);
+    // Very small amount - 0.1 USDC
+    const AMOUNT = ethers.parseUnits("0.1", 6);
     
     const [signer] = await ethers.getSigners();
-    console.log("Testing with 1 USDC");
+    console.log("Testing with 0.1 USDC");
     console.log("Signer:", signer.address);
     
     try {
-        const contract = await ethers.getContractAt("pSimmiArbitrageSell", CONTRACT_ADDRESS);
+        const contract = await ethers.getContractAt("podETHArbitrageSell", CONTRACT_ADDRESS);
 
         // Calculate expected fee
         const fee = await contract.calculateFee(AMOUNT);
@@ -24,7 +24,7 @@ async function main() {
         // Execute with detailed error catching
         console.log("\nExecuting flash loan...");
         
-        const tx = await contract.requestFlashLoan(USDC_ADDRESS, AMOUNT, {
+        const tx = await contract.requestFlashLoan(AMOUNT, {
             gasLimit: 2000000
         });
         
